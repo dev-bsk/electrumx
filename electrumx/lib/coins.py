@@ -616,23 +616,24 @@ class BitcoinStaking(Coin):
     NAME = "BitcoinStaking"
     SHORTNAME = "BSK"
     NET = "mainnet"
-    P2PKH_VERBYTE = bytes.fromhex("32")
-    P2SH_VERBYTES = bytes.fromhex("6E")
+    P2PKH_VERBYTE = bytes.fromhex("00")
+    P2SH_VERBYTES = bytes.fromhex("05")
     WIF_BYTE = bytes.fromhex("80")
-    GENESIS_HASH = ('000002a62d284b34a40e18f27fc770bf'
-                    '26f7a61560ae6a072a2c95aabc60a129')
-    TX_COUNT = 3006
-    TX_COUNT_HEIGHT = 2000
+                     
+    GENESIS_HASH = ('0000091185a04dbbcee63ad911d786ef'
+                    '77e4d9c2a06d51c2eaecd17234a6bb4c')
+    TX_COUNT = 244063
+    TX_COUNT_HEIGHT = 122363
     TX_PER_BLOCK = 2
-    RPC_PORT = 58931
+    RPC_PORT = 48931
     REORG_LIMIT = 1000
     DAEMON = daemon.BSKDaemon
 
 
-    XPUB_VERBYTES = bytes.fromhex("7788B21E")
-    XPRV_VERBYTES = bytes.fromhex("7788ADE4")
+    XPUB_VERBYTES = bytes.fromhex("0488B21E")
+    XPRV_VERBYTES = bytes.fromhex("0488ADE4")
     BASIC_HEADER_SIZE = 116
-    BSK_POS_HEIGHT = 1001
+    BSK_POS_HEIGHT = 5001
     BSK_POS_HEADER_SIZE = 187
     BSK_POS_START_OFFSET = BSK_POS_HEIGHT * BASIC_HEADER_SIZE
     CHUNK_SIZE = 1024
