@@ -539,3 +539,22 @@ class ZcoinMtpDaemon(Daemon):
     async def protx(self, params):
         '''Set of commands to execute ProTx related actions.'''
         return await self._send_single('protx', params)
+
+
+class BSKDaemon(Daemon):
+
+    async def searchlogs(self, from_block, to_block, addresses=None, topics=None, minconf=0):
+        self.logger.info('searchlogs {} {}'.format(from_block, to_block))
+        if not addresses:
+            addresses = {'addresses': []}
+        else:
+            addresses = {'addresses': addresses}
+        if not topics:
+            topics = {'topics': []}
+        else:
+            topics = {'topics': topics}
+        eventlogs = await self._send_single('searchlogs', (from_block, to_block, addresses, topics, minconf))
+        return eventlogs
+
+    async def gettransactionreceipt(self, txid):
+        return await self._send_single('gettransactionreceipt', (txid, ))

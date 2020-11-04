@@ -1172,3 +1172,12 @@ class DeserializerPrimecoin(Deserializer):
         header_end = self.cursor
         self.cursor = start
         return self._read_nbytes(header_end - start)
+
+class DeserializerBsk(DeserializerSegWit):
+
+    def read_varint(self):
+        '''
+        set _read_varint to public
+        :return: int
+        '''
+        return self._read_varint()

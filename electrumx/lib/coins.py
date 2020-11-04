@@ -182,6 +182,23 @@ class Coin:
         '''Return a hashX given a coin address.'''
         return cls.hashX_from_script(cls.pay_to_address_script(address))
 
+@classmethod
+    def P2PKH_address_from_hash160(cls, hash160):
+        '''Return a P2PKH address given a public key.'''
+        assert len(hash160) == 20
+        return cls.ENCODE_CHECK(cls.P2PKH_VERBYTE + hash160)
+
+    @classmethod
+    def P2PKH_address_from_pubkey(cls, pubkey):
+        '''Return a coin address given a public key.'''
+        return cls.P2PKH_address_from_hash160(hash160(pubkey))
+
+    @classmethod
+    def P2SH_address_from_hash160(cls, hash160):
+        '''Return a coin address given a hash160.'''
+        assert len(hash160) == 20
+        return cls.ENCODE_CHECK(cls.P2SH_VERBYTES[0] + hash160)
+
     @classmethod
     def hash160_to_P2PKH_script(cls, hash160):
         return ScriptPubKey.P2PKH_script(hash160)
@@ -275,7 +292,12 @@ class Coin:
         set of values that can be queried as an estimatefee block target.
         '''
         return n
-
+    @classmethod
+    def hash160_contract_to_hashY(cls, hash160, contract_addr):
+        m = sha256()
+        m.update(hash160.encode())
+        m.update(contract_addr.encode())
+        return m.digest()[:HASHY_LEN]
 
 class AuxPowMixin:
     STATIC_BLOCK_HEADERS = False
@@ -349,7 +371,6 @@ class BitcoinMixin:
     XPUB_VERBYTES = bytes.fromhex("0488b21e")
     XPRV_VERBYTES = bytes.fromhex("0488ade4")
     RPC_PORT = 8332
-
 
 class NameMixin:
     DATA_PUSH_MULTIPLE = -2
@@ -588,6 +609,95 @@ class BitcoinCash(BitcoinMixin, Coin):
                     'https://electroncash.org/'
                     '<br/><br/>')
         return False
+
+class BitcoinStaking(Coin):
+    DESERIALIZER = lib_tx.DeserializerBsk
+    STATIC_BLOCK_HEADERS = False
+    NAME = "BitcoinStaking"
+    SHORTNAME = "BSK"
+    NET = "mainnet"
+    P2PKH_VERBYTE = bytes.fromhex("32")
+    P2SH_VERBYTES = bytes.fromhex("6E")
+    WIF_BYTE = bytes.fromhex("80")
+    GENESIS_HASH = ('000002a62d284b34a40e18f27fc770bf'
+                    '26f7a61560ae6a072a2c95aabc60a129')
+    TX_COUNT = 3006
+    TX_COUNT_HEIGHT = 2000
+    TX_PER_BLOCK = 2
+    RPC_PORT = 58931
+    REORG_LIMIT = 1000
+    DAEMON = daemon.BSKDaemon
+
+
+    XPUB_VERBYTES = bytes.fromhex("7788B21E")
+    XPRV_VERBYTES = bytes.fromhex("7788ADE4")
+    BASIC_HEADER_SIZE = 116
+    BSK_POS_HEIGHT = 1001
+    BSK_POS_HEADER_SIZE = 187
+    BSK_POS_START_OFFSET = BSK_POS_HEIGHT * BASIC_HEADER_SIZE
+    CHUNK_SIZE = 1024
+    PEERS = []
+
+    @classmethod
+    def block_header(cls, block, height):
+        '''Returns the block header given a block and its height.'''
+        deserializer = cls.DESERIALIZER(block, start=cls.BASIC_HEADER_SIZE)
+        sig_length = deserializer.read_varint() 
+        return block[:deserializer.cursor + sig_length]
+    
+    @classmethod
+    def electrum_header(cls, header, height):
+        version, = struct.unpack('<I', header[:4])
+        timestamp, bits, nonce = struct.unpack('<III', header[68:80])
+
+        deserializer = cls.DESERIALIZER(header, start=cls.BASIC_HEADER_SIZE)
+        if height >= cls.BSK_POS_HEIGHT:
+            sig_length = deserializer.read_varint()
+            header = {
+                'version': version,
+                'prev_block_hash': hash_to_hex_str(header[4:36]),
+                'merkle_root': hash_to_hex_str(header[36:68]),
+                'timestamp': timestamp,
+                'bits': bits,
+                'nonce': nonce,
+                'hash_state_root': hash_to_hex_str(header[80:112]),
+                'hash_utxo_root': hash_to_hex_str(header[112:144]),
+                'hash_prevout_stake': hash_to_hex_str(header[144:176]),
+                'hash_prevout_n': struct.unpack('<I', header[176:180])[0],
+                'sig': hash_to_hex_str(header[:-sig_length-1:-1]),
+            }
+        else:
+            sig_length = 0
+            header = {
+                'version': version,
+                'prev_block_hash': hash_to_hex_str(header[4:36]),
+                'merkle_root': hash_to_hex_str(header[36:68]),
+                'timestamp': timestamp,
+                'bits': bits,
+                'nonce': nonce,
+                'hash_prevout_stake': hash_to_hex_str(header[80:112]),
+                'sig': hash_to_hex_str(header[:-sig_length-1:-1]),
+            }
+        return header
+
+    @classmethod
+    def hashX_from_script(cls, script):
+        '''Returns a hashX from a script, or None if the script is provably
+        unspendable so the output can be dropped.
+        '''
+        if script and script[0] == OpCodes.OP_RETURN:
+            return None
+
+
+        if (len(script) == 35 and script[0] == 0x21 and script[1] in [2, 3]) \
+                or (len(script) == 67 and script[0] == 0x41 and script[1] in [4, 6, 7]) \
+                and script[-1] == OpCodes.OP_CHECKSIG:
+            pubkey = script[1:-1]
+            script = ScriptPubKey.P2PKH_script(hash160(pubkey))
+
+        return sha256(script).digest()[:HASHX_LEN]
+  
+
 
 
 class Bitcoin(BitcoinMixin, Coin):

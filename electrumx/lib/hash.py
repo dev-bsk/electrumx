@@ -32,14 +32,21 @@ import hmac
 from electrumx.lib.util import bytes_to_int, int_to_bytes, hex_to_bytes
 
 _sha256 = hashlib.sha256
+_sha512 = hashlib.sha512
 _new_hash = hashlib.new
 _hmac_digest = hmac.digest
 HASHX_LEN = 11
 
-
 def sha256(x):
     '''Simple wrapper of hashlib sha256.'''
     return _sha256(x).digest()
+
+
+def ripemd160(x):
+    '''Simple wrapper of hashlib ripemd160.'''
+    h = _new_hash('ripemd160')
+    h.update(x)
+    return h.digest()
 
 
 def double_sha256(x):
@@ -47,6 +54,18 @@ def double_sha256(x):
     return sha256(sha256(x))
 
 
+def hmac_sha512(key, msg):
+    '''Use SHA-512 to provide an HMAC.'''
+    return _new_hmac(key, msg, _sha512).digest()
+
+
+def hash160(x):
+    '''RIPEMD-160 of SHA-256.
+
+    Used to make bitcoin addresses from pubkeys.'''
+    return ripemd160(sha256(x))
+
+    
 def hash_to_hex_str(x):
     '''Convert a big-endian binary hash to displayed hex string.
 
